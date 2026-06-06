@@ -9,6 +9,11 @@ from contextlib import asynccontextmanager
 from chatbot import generate_title
 from search import web_search
 from search import deep_research
+from typing import Optional
+from pydantic import BaseModel
+from reviewer import review_code
+import json
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +21,11 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+
+class Request(BaseModel):
+    code: str
+    question: Optional[str] = ""
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -99,3 +109,9 @@ from fastapi.responses import FileResponse
 @app.get("/")
 def root():
     return FileResponse("index.html")
+
+@app.post("/review")
+async def review(request: Request):
+    output = await review_code(request.code, request.question)
+    return json.loads(output)
+
