@@ -1,0 +1,95 @@
+from fastapi import FastAPI, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select,update
+from Database import get_db, init_db
+from Database.models import Conversation, Message
+from schemas import ConversationCreate, ConversationResponse, MessageSend, MessageResponse
+from chatbot import chat
+from contextlib import asynccontextmanager
+from chatbot import generate_title
+from search import web_search
+from search import deep_research
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/conversation")
+async def create_conversation(data: ConversationCreate, db: AsyncSession = Depends(get_db)):
+    conversation = Conversation(title=data.title)
+    db.add(conversation)
+    await db.commit()
+    await db.refresh(conversation)
+    return conversation
+
+@app.get("/conversations")
+async def get_conversation(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Conversation).order_by(Conversation.created_at.desc()))
+    return result.scalars().all()
+
+@app.get("/conversation/{conversation_id}")
+async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at)
+    )
+    return result.scalars().all()
+
+@app.post("/chat")
+async def send_message(data: MessageSend, db: AsyncSession = Depends(get_db)):
+    # print(f"Received: web_search={data.web_search}")
+    #fetch history
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == data.conversation_id)
+        .order_by(Message.created_at)
+    )
+    messages = result.scalars().all()
+    history = [{"role": m.role,"content":m.content} for m in messages]
+
+    if len(history) == 0:
+        generated_title = await generate_title(data.message)
+        await db.execute(
+            update(Conversation)
+            .where(Conversation.id == data.conversation_id)
+            .values(title=generated_title)
+        )
+        await db.commit()
+
+    #save user message
+    user_msg = Message(conversation_id=data.conversation_id,role="user",content=data.message)
+    db.add(user_msg)
+    await db.commit()
+
+    context = ""
+    if data.web_search:
+        context = web_search(data.message)
+        # print(f"RESULTS: {context}")
+
+    if data.deep_research:
+        context = await deep_research(data.message)
+
+    #call groq
+    response = await chat(history,data.message,context=context)
+
+
+    #save assistant message
+    assistant_msg = Message(conversation_id=data.conversation_id,role="assistant",content=response)
+    db.add(assistant_msg)
+    await db.commit()
+
+    return {"conversation_id":data.conversation_id,"role":"assistant","content":response}

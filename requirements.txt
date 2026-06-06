@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+groq
+sqlalchemy
+aiosqlite
+python-dotenv
+pydantic
+typing
+tavily
