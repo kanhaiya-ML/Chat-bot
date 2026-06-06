@@ -93,3 +93,9 @@ async def send_message(data: MessageSend, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     return {"conversation_id":data.conversation_id,"role":"assistant","content":response}
+
+from fastapi.responses import FileResponse
+
+@app.get("/")
+def root():
+    return FileResponse("index.html")
