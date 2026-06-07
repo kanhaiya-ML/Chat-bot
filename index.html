@@ -421,6 +421,7 @@
             gap: 14px;
             animation: slideUp 0.25s ease;
             align-items: flex-start;
+            justify-content: center;
         }
 
         @keyframes slideUp {
@@ -1113,6 +1114,39 @@
         .toast button.danger:hover {
             background: #ff4444;
         }
+        .scroll-bottom-btn {
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 18px;
+            z-index: 25;
+            transition: all 0.2s;
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .scroll-bottom-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .scroll-bottom-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
     </style>
 </head>
 <body>
@@ -1212,6 +1246,9 @@
         </div>
     </div>
 </div>
+<button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()" title="Scroll to bottom">
+    ↓
+</button>
 </main>
 
 <script>
@@ -1306,17 +1343,26 @@
                 const el = document.createElement('div');
                 el.className = 'conv-item' + (c.id === currentConvId ? ' active' : '');
                 el.dataset.id = c.id;
-                el.innerHTML = `
-                    <span class="conv-title">${escapeHtml(c.title || 'New Chat')}</span>
-                    <button class="conv-delete-btn" onclick="event.stopPropagation(); confirmDeleteConversation('${c.id}', '${escapeHtml(c.title || 'New Chat')}')" title="Delete conversation">
-                        ×
-                    </button>
-                `;
-                el.onclick = (e) => {
-                    if (!e.target.classList.contains('conv-delete-btn')) {
-                        if (currentMode !== 'chat') switchMode('chat');
-                        loadConversation(c.id, c.title);
-                    }
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'conv-title';
+                titleSpan.textContent = c.title || 'New Chat';
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'conv-delete-btn';
+                deleteBtn.title = 'Delete conversation';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.onclick = (e) => {
+                    console.log("Delete button clicked");
+                    e.stopPropagation();
+                    confirmDeleteConversation(c.id, c.title || 'New Chat');
+                };
+
+                el.appendChild(titleSpan);
+                el.appendChild(deleteBtn);
+
+                el.onclick = () => {
+                    if (currentMode !== 'chat') switchMode('chat');
+                    loadConversation(c.id, c.title);
                 };
                 list.appendChild(el);
             });
@@ -1327,6 +1373,7 @@
 
     // ── Confirm and delete conversation ──────────────────
     function confirmDeleteConversation(id, title) {
+        console.log("confirmDelete called with id:", id, "title:", title);
         conversationToDelete = { id, title };
         
         // Remove existing toast if any
@@ -1444,7 +1491,7 @@
     // ── Send message ──────────────────────────────────────
     async function sendMessage() {
         const input = document.getElementById('messageInput');
-        const text = input.value.trim();
+        const text = input.value;
         if (!text || isTyping) return;
 
         if (!currentConvId) {
@@ -1465,19 +1512,59 @@
         isTyping = true;
 
         try {
-            const res = await fetch(`${API}/chat`, {
+            console.log("Fetching stream...", currentConvId);
+            const res = await fetch(`${API}/chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     conversation_id: currentConvId,
                     message: text,
                     web_search: webSearchOn,
-                    deep_search: deepResearchOn
+                    deep_research: deepResearchOn
                 })
             });
-            const data = await res.json();
+
             removeTyping();
-            appendMessage('assistant', data.content);
+
+            // create empty assistant message to stream into
+            const msgRow = createEmptyAssistantMessage();
+            const msgEl = msgRow.querySelector('.message-text');
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+
+            let fullText = '';
+            let streamDone = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                console.log("CHUNK:", chunk);
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.toLowerCase().startsWith('data: ')) {
+                        const token = line.slice(6);
+                        if (token === '[DONE]') {
+                            streamDone = true;
+                            break;
+                        }
+                        fullText += token;
+                        console.log("adding token:", token, "fullText now:", fullText.length);
+                        msgEl.textContent = fullText;
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                        scrollToBottom();
+                    }
+                }
+                if (streamDone) break;
+            }
+            msgEl.innerHTML = marked.parse(fullText);
+            msgEl.style.display = 'none';
+            msgEl.offsetHeight;
+            msgEl.style.display = '';
+            scrollToBottom();
+            await loadConversations();
         } catch (e) {
             removeTyping();
             appendMessage('assistant', '⚠️ Something went wrong. Please try again.');
@@ -1504,6 +1591,22 @@
         `;
         area.appendChild(row);
         scrollToBottom();
+    }
+
+    function createEmptyAssistantMessage() {
+        const area = document.getElementById('messagesArea');
+        const row = document.createElement('div');
+        row.className = 'message-row';
+        row.innerHTML = `
+            <div class="avatar ai">K</div>
+            <div class="message-content">
+                <div class="message-sender">KAI</div>
+                <div class="message-text"></div>
+            </div>
+        `;
+        area.appendChild(row);
+        scrollToBottom();
+        return row;
     }
 
     // ── Typing indicator ──────────────────────────────────
@@ -1540,6 +1643,18 @@
         const area = document.getElementById('messagesArea');
         if (area) area.scrollTop = area.scrollHeight;
     }
+
+    // Show/hide scroll-to-bottom button
+    const messagesArea = document.getElementById('messagesArea');
+    messagesArea.addEventListener('scroll', function() {
+        const btn = document.getElementById('scrollBottomBtn');
+        const isNearBottom = this.scrollHeight - this.scrollTop - this.clientHeight < 100;
+        if (isNearBottom) {
+            btn.classList.remove('visible');
+        } else {
+            btn.classList.add('visible');
+        }
+    });
 
     function autoResize(el) {
         el.style.height = 'auto';

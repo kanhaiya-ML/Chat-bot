@@ -5,6 +5,8 @@ load_dotenv()
 
 client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
+
+#this is normal chat which wait till llm to send all tokens then send to frontend
 async def chat(history: list, new_message: str, context: str = "") -> str:
     messages = [
         {"role": "system", "content": "You are a helpful conversational AI assistant. Be concise and friendly. When web search results are provided, use them as your primary source and present the information confidently without disclaimers about knowledge cutoffs."}
@@ -49,3 +51,25 @@ async def generate_subquestions(query: str):
     questions = [q.strip() for q in questions if q.strip()]
     return questions[:3]
 
+
+#this won't wait for full response its send as soon as he got generated tokens from llm's
+async def stream_chat(history: list, new_message: str, context: str = ""):
+    messages = [
+        {"role": "system", "content": "You are a helpful conversational AI assistant. Be concise and friendly. When web search results are provided, use them as your primary source and present the information confidently without disclaimers about knowledge cutoffs."}
+    ] + history
+
+    if context:
+        messages.append({"role": "system", "content": f"Use this information to answer the user:\n{context}"})
+
+    messages.append({"role": "user", "content": new_message})
+
+    stream = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=messages,
+        stream=True
+    )
+
+    async for chunk in stream:
+        token = chunk.choices[0].delta.content
+        if token:
+            yield token

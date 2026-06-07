@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,update
+from fastapi.responses import FileResponse
 from Database import get_db, init_db
 from Database.models import Conversation, Message
 from schemas import ConversationCreate, ConversationResponse, MessageSend, MessageResponse
@@ -12,7 +13,12 @@ from search import deep_research
 from typing import Optional
 from pydantic import BaseModel
 from reviewer import review_code
+import asyncio
+from fastapi import BackgroundTasks
+from fastapi.responses import StreamingResponse
+from chatbot import stream_chat,generate_title,chat
 import json
+from sqlalchemy import delete
 
 
 @asynccontextmanager
@@ -104,7 +110,21 @@ async def send_message(data: MessageSend, db: AsyncSession = Depends(get_db)):
 
     return {"conversation_id":data.conversation_id,"role":"assistant","content":response}
 
-from fastapi.responses import FileResponse
+
+@app.delete("/conversation/{conversation_id}")
+async def delete_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
+    await db.execute(
+        delete(Message)
+        .where(Message.conversation_id == conversation_id)
+    )
+    await db.execute(
+        delete(Conversation)
+        .where(Conversation.id == conversation_id)
+    )
+    await db.commit()
+    return {"message":"Conversation Deleted successfully"}
+
+
 
 @app.get("/")
 def root():
@@ -114,4 +134,49 @@ def root():
 async def review(request: Request):
     output = await review_code(request.code, request.question)
     return json.loads(output)
+
+
+@app.post("/chat/stream")
+async def chat_stream_route(data: MessageSend, db: AsyncSession = Depends(get_db),background_tasks: BackgroundTasks=BackgroundTasks()):
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == data.conversation_id)
+        .order_by(Message.created_at)
+    )
+    messages = result.scalars().all()
+    history = [{"role":m.role,"content":m.content} for m in messages]
+
+    user_msg = Message(conversation_id=data.conversation_id,role="user",content=data.message)
+    db.add(user_msg)
+    await db.commit()
+
+
+    context = ""
+    if data.web_search:
+        context = web_search(data.message)
+    if data.deep_research:
+        context = await deep_research(data.message)
+
+
+    full_response = []
+
+    async def generate():
+        async for token in stream_chat(history,data.message,context=context):
+            full_response.append(token)
+            yield f"data: {token}\n\n"
+        yield "data: [DONE]\n\n"
+
+    async def save_to_db():
+        await asyncio.sleep(1)
+        assistant_msg = Message(
+            conversation_id=data.conversation_id,
+            role="assistant",
+            content="".join(full_response)
+        )
+        db.add(assistant_msg)
+        await db.commit()
+
+    background_tasks.add_task(save_to_db)
+
+    return StreamingResponse(generate(),media_type="text/event-stream",background=background_tasks)
 
