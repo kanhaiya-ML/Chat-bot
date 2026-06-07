@@ -1,0 +1,11 @@
+[33m37b86bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m HEAD@{0}: rebase (abort): returning to refs/heads/master
+[33m37b86bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m HEAD@{1}: rebase (abort): returning to refs/heads/master
+[33m44076c2[m HEAD@{2}: reset: moving to 44076c2
+[33m37b86bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m HEAD@{3}: checkout: moving from master to master
+[33m37b86bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m HEAD@{4}: reset: moving to HEAD
+[33m37b86bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m HEAD@{5}: checkout: moving from 44076c24448b02f3c3cf473e2ff6d29483b10e2c to master
+[33m44076c2[m HEAD@{6}: commit: added streaming, web search, deep search, delete conversation
+[33mce7292d[m HEAD@{7}: commit: adding UI and AI code reviewer feature
+[33m30394f2[m HEAD@{8}: pull origin master --rebase (start): checkout 30394f2c2d1d8c4c2036f259016890fdc9aed219
+[33m37b86bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m HEAD@{9}: commit: adding Ui and Ai code reviewer feature
+[33me5c892d[m HEAD@{10}: commit (initial): initial commit: AI chatbot with memory, web search, deep research

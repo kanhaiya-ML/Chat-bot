@@ -146,6 +146,15 @@ async def chat_stream_route(data: MessageSend, db: AsyncSession = Depends(get_db
     messages = result.scalars().all()
     history = [{"role":m.role,"content":m.content} for m in messages]
 
+    if len(history) == 0:
+        generated_title = await generate_title(data.message)
+        await db.execute(
+            update(Conversation)
+            .where(Conversation.id == data.conversation_id)
+            .values(title=generated_title)
+        )
+        await db.commit()
+
     user_msg = Message(conversation_id=data.conversation_id,role="user",content=data.message)
     db.add(user_msg)
     await db.commit()
