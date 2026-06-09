@@ -125,7 +125,7 @@ User Query
 
 ### Chat Interface
 
-![Chat Interface](images/KAI — Your AI Assistant - Google Chrome 08-06-2026 11_27_18.png)
+![Chat Interface](images/chat_interface.png)
 
 ### Web Search Results
 
@@ -133,9 +133,7 @@ User Query
 
 ### Code Review
 
-![Code Review](images/KAI — Your AI Assistant - Google Chrome 09-06-2026 09_14_19.png)
-
-*(Replace with actual screenshots from your project.)*
+![Code Review](images/images/code_review.png)
 
 ---
 
