@@ -10,7 +10,11 @@ KaiBot is designed to provide context-aware conversations while leveraging exter
 
 🔗 Demo: https://kanhaiyaml-chat-bot.hf.space/
 
-🎥 Demo Video: *(Add your demo video here)*
+🎥 Demo Video: 
+
+https://github.com/user-attachments/assets/c1186d90-9e7a-4a83-bde3-66bb38d57b12
+
+
 
 ---
 
@@ -121,15 +125,15 @@ User Query
 
 ### Chat Interface
 
-![Chat Interface](images/chat-interface.png)
+![Chat Interface](images/KAI — Your AI Assistant - Google Chrome 08-06-2026 11_27_18.png)
 
 ### Web Search Results
 
-![Web Search](images/web-search.png)
+![Web Search](images/image.png)
 
 ### Code Review
 
-![Code Review](images/code-review.png)
+![Code Review](images/KAI — Your AI Assistant - Google Chrome 09-06-2026 09_14_19.png)
 
 *(Replace with actual screenshots from your project.)*
 
