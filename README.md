@@ -133,7 +133,7 @@ User Query
 
 ### Code Review
 
-![Code Review](images/images/code_review.png)
+![Code Review](images/code_review.png)
 
 ---
 
