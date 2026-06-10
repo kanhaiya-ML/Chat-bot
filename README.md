@@ -37,6 +37,7 @@ https://github.com/user-attachments/assets/c1186d90-9e7a-4a83-bde3-66bb38d57b12
 * Retrieves up-to-date information from the internet.
 * Enhances response quality beyond model knowledge.
 * Provides more relevant and current answers.
+* uses tavily browser
 
 ### 🔍 Deep Research
 
